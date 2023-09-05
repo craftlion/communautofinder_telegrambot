@@ -1,4 +1,4 @@
-package communautofinder_telegrambot
+package main
 
 import (
 	"context"
