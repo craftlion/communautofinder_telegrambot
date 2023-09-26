@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/joho/godotenv"
 
 	"github.com/craftlion/communautofinder"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -55,6 +56,12 @@ var bot *tgbotapi.BotAPI
 var mutex = sync.Mutex{}
 
 func main() {
+
+	 // Find .env file
+	err1 := godotenv.Load(".env")
+	if err1!= nil{
+		log.Fatalf("Error loading .env file: %s", err1)
+	}
 
 	var err error
 	bot, err = tgbotapi.NewBotAPI(os.Getenv("TOKEN_COMMUNAUTOSEARCH_BOT"))
