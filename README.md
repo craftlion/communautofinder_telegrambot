@@ -12,8 +12,8 @@ The goal of this Telegram bot is to provide an interface for launching a Communa
 
 ## Usage
 
-To use this bot, you need to define an environment variable named *TOKEN_COMMUNAUTOSEARCH_BOT* and set its value to your Telegram token.  
-After that, run ```go run main.go``` to launch the bot.  
+To use this bot, you need to define an environment variable named _TOKEN_COMMUNAUTOSEARCH_BOT_ in a .env file and set its value to your Telegram token.  
+After that, run `go run main.go` to launch the bot.  
 Then, search for the bot on Telegram to start a discussion with it.
 
 ## Dependencies
