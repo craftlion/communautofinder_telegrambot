@@ -87,7 +87,7 @@ func main() {
 		userCtx.chatId = update.Message.Chat.ID
 
 		if !found {
-			resultChannel[userCtx.chatId] = make(chan int)
+			resultChannel[userCtx.chatId] = make(chan int, 1)
 		}
 
 		response := generateResponse(&userCtx, message)
