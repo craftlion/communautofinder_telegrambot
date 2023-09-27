@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 	"github.com/joho/godotenv"
 
 	"github.com/craftlion/communautofinder"
@@ -51,19 +52,20 @@ var cancelSearchingMethod = make(map[int64]context.CancelFunc)
 
 const layoutDate = "2006-01-02 15:04"
 
+const dateExample = "2023-11-21 20:12"
+
 var bot *tgbotapi.BotAPI
 
 var mutex = sync.Mutex{}
 
 func main() {
 
-	 // Find .env file
-	err1 := godotenv.Load(".env")
-	if err1!= nil{
-		log.Fatalf("Error loading .env file: %s", err1)
+	// Find .env file
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file: %s", err)
 	}
 
-	var err error
 	bot, err = tgbotapi.NewBotAPI(os.Getenv("TOKEN_COMMUNAUTOSEARCH_BOT"))
 	if err != nil {
 		log.Fatal(err)
@@ -121,17 +123,17 @@ func generateResponse(userCtx *UserContext, message *tgbotapi.Message) string {
 		}
 
 		userCtx.state = AskingType
-		return "Hello! Type:\n- station to search for a communauto station\n- flex to search for a communauto flex vehicle?"
+		return "Hello! Type:\n- station to search for a communauto station\n- flex to search for a communauto flex vehicle ?"
 	} else if userCtx.state == AskingType {
 		if strings.ToLower(messageText) == "station" {
 			userCtx.searchType = Station
 			userCtx.state = AskingMargin
-			return "What is your search radius in Km?"
+			return "What is your search radius in Km ?"
 
 		} else if strings.ToLower(messageText) == "flex" {
 			userCtx.searchType = Flex
 			userCtx.state = AskingMargin
-			return "What is your search radius in Km?"
+			return "What is your search radius in Km ?"
 		}
 
 	} else if userCtx.state == AskingMargin {
@@ -161,7 +163,7 @@ func generateResponse(userCtx *UserContext, message *tgbotapi.Message) string {
 			} else if userCtx.searchType == Station {
 				userCtx.state = AskingDateStart
 
-				return fmt.Sprintf("What is the start date and time for the rental in the format %s?", layoutDate)
+				return fmt.Sprintf("What is the start date and time for the rental in the format %s ?", dateExample)
 			}
 		}
 	} else if userCtx.state == AskingDateStart {
@@ -171,7 +173,7 @@ func generateResponse(userCtx *UserContext, message *tgbotapi.Message) string {
 		if err == nil {
 			userCtx.dateStart = t
 			userCtx.state = AskingDateEnd
-			return fmt.Sprintf("What is the end date and time for the rental in the format %s?", layoutDate)
+			return fmt.Sprintf("What is the end date and time for the rental in the format %s ?", dateExample)
 		}
 
 	} else if userCtx.state == AskingDateEnd {
@@ -198,7 +200,7 @@ func generateResponse(userCtx *UserContext, message *tgbotapi.Message) string {
 
 	}
 
-	return "I didn't quite understand."
+	return "I didn't quite understand 😕"
 }
 
 func generateMessageResearch(userCtx UserContext) string {
@@ -211,10 +213,12 @@ func generateMessageResearch(userCtx UserContext) string {
 		typeSearch = "station"
 	}
 
-	message := fmt.Sprintf("Searching for a %s vehicle within %fkm of GPS(%f,%f)", typeSearch, userCtx.kmMargin, userCtx.latitude, userCtx.longitude)
+	roundedKmMargin := int(userCtx.kmMargin)
+
+	message := fmt.Sprintf("🔍 Searching for a %s vehicle within %dkm of the position you entered... you will receive a message when one is found", typeSearch, roundedKmMargin)
 
 	if userCtx.searchType == Station {
-		message += fmt.Sprintf(" from %s to %s", userCtx.dateStart, userCtx.dateEnd)
+		message += fmt.Sprintf(" from %s to %s", userCtx.dateStart.Format(layoutDate), userCtx.dateEnd.Format(layoutDate))
 	}
 
 	return message
@@ -229,25 +233,30 @@ func launchSearch(userCtx UserContext) {
 	cancelSearchingMethod[userCtx.chatId] = cancel
 
 	if userCtx.searchType == Flex {
-		go communautofinder.SearchFlexCarForGoRoutine(cityId, currentCoordinate, userCtx.kmMargin, resultChannel[userCtx.chatId], ctx)
+		go communautofinder.SearchFlexCarForGoRoutine(cityId, currentCoordinate, userCtx.kmMargin, resultChannel[userCtx.chatId], ctx, cancel)
 	} else if userCtx.searchType == Station {
-		go communautofinder.SearchStationCarForGoRoutine(cityId, currentCoordinate, userCtx.kmMargin, userCtx.dateStart, userCtx.dateEnd, resultChannel[userCtx.chatId], ctx)
+		go communautofinder.SearchStationCarForGoRoutine(cityId, currentCoordinate, userCtx.kmMargin, userCtx.dateStart, userCtx.dateEnd, resultChannel[userCtx.chatId], ctx, cancel)
 	}
 
 	nbCarFound := <-resultChannel[userCtx.chatId]
 
+	var msg tgbotapi.MessageConfig
+
 	if nbCarFound != -1 {
-		msg := tgbotapi.NewMessage(userCtx.chatId, fmt.Sprintf("%d vehicle(s) available according to your search criteria", nbCarFound))
-		bot.Send(msg)
-
-		mutex.Lock()
-
-		newUserCtx := userContexts[userCtx.chatId]
-		newUserCtx.state = EndSearch
-		userContexts[newUserCtx.chatId] = newUserCtx
-
-		mutex.Unlock()
+		msg = tgbotapi.NewMessage(userCtx.chatId, fmt.Sprintf("💡 Found ! %d vehicle(s) available according to your search criteria", nbCarFound))
+	} else {
+		msg = tgbotapi.NewMessage(userCtx.chatId, "😞 An error occurred in your search criteria. Please launch a new search")
 	}
+
+	bot.Send(msg)
+
+	mutex.Lock()
+
+	newUserCtx := userContexts[userCtx.chatId]
+	newUserCtx.state = EndSearch
+	userContexts[newUserCtx.chatId] = newUserCtx
+
+	mutex.Unlock()
 
 	delete(cancelSearchingMethod, userCtx.chatId)
 }
