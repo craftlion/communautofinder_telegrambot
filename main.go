@@ -60,11 +60,10 @@ var mutex = sync.Mutex{}
 
 func main() {
 
-	// Find .env file
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatalf("Error loading .env file: %s", err)
-	}
+	// Find TOKEN in .env file if exist
+	godotenv.Load(".env")
+
+	var err error
 
 	bot, err = tgbotapi.NewBotAPI(os.Getenv("TOKEN_COMMUNAUTOSEARCH_BOT"))
 	if err != nil {
