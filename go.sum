@@ -1,5 +1,9 @@
-github.com/craftlion/communautofinder v1.2.0 h1:eblDFzB36erPjZLRQC4lR5va2AP9Bh8OYB8MqfjRSyA=
-github.com/craftlion/communautofinder v1.2.0/go.mod h1:aUPA9bhCTDcsHax45j1149Hql6d1hNMLwI9TAAYEfso=
+github.com/craftlion/communautofinder v1.3.0 h1:oRyHpJHKn9UDwghY+yESD+kpnWxuCCslGPZ9ZVKAmHY=
+github.com/craftlion/communautofinder v1.3.0/go.mod h1:gtCCUDXU/R4EqM8I9DJqfROy/EUSV+K+pDLfsZ7XURM=
+github.com/craftlion/communautofinder v1.3.1 h1:1JBwcvfy+MjofBeZPGl5Ya0axMqb3D0IbLtpZdlwDFw=
+github.com/craftlion/communautofinder v1.3.1/go.mod h1:gtCCUDXU/R4EqM8I9DJqfROy/EUSV+K+pDLfsZ7XURM=
+github.com/craftlion/communautofinder v1.3.2 h1:aqh3y89Ejo+hE33qhoPE6/CkQcgQaudMIG+5eMGq38c=
+github.com/craftlion/communautofinder v1.3.2/go.mod h1:gtCCUDXU/R4EqM8I9DJqfROy/EUSV+K+pDLfsZ7XURM=
 github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible h1:2cauKuaELYAEARXRkq2LrJ0yDDv1rW7+wrTEdVL3uaU=
 github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible/go.mod h1:qf9acutJ8cwBUhm1bqgz6Bei9/C/c93FPDljKWwsOgM=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=

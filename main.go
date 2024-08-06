@@ -24,31 +24,27 @@ const (
 	AskingPosition
 	AskingDateStart
 	AskingDateEnd
+	AskingVehiculeType
 	Searching
 	EndSearch
 )
 
-const (
-	Flex = iota
-	Station
-)
-
 type UserContext struct {
-	chatId     int64
-	state      int
-	searchType int
-	kmMargin   float64
-	latitude   float64
-	longitude  float64
-	dateStart  time.Time
-	dateEnd    time.Time
+	chatId       int64
+	state        int
+	searchType   communautofinder.SearchType
+	kmMargin     float64
+	latitude     float64
+	longitude    float64
+	dateStart    time.Time
+	dateEnd      time.Time
+	vehiculeType communautofinder.VehiculeType
 }
-
-const cityId = 59 // see available cities -> https://restapifrontoffice.reservauto.net/ReservautoFrontOffice/index.html?urls.primaryName=Branch%20version%202%20(6.93.1)#/
 
 var userContexts = make(map[int64]UserContext)
 var resultChannel = make(map[int64]chan int)
 var cancelSearchingMethod = make(map[int64]context.CancelFunc)
+var inputVehiculeTypes = map[rune]communautofinder.VehiculeType{'0': communautofinder.AllTypes, '1': communautofinder.FamilyCar, '2': communautofinder.UtilityVehicle, '3': communautofinder.MidSize, '4': communautofinder.Minivan}
 
 const layoutDate = "2006-01-02 15:04"
 
@@ -125,12 +121,12 @@ func generateResponse(userCtx *UserContext, message *tgbotapi.Message) string {
 		return "Hello! Type:\n- station to search for a communauto station\n- flex to search for a communauto flex vehicle ?"
 	} else if userCtx.state == AskingType {
 		if strings.ToLower(messageText) == "station" {
-			userCtx.searchType = Station
+			userCtx.searchType = communautofinder.SearchingStation
 			userCtx.state = AskingMargin
 			return "What is your search radius in Km ?"
 
 		} else if strings.ToLower(messageText) == "flex" {
-			userCtx.searchType = Flex
+			userCtx.searchType = communautofinder.SearchingFlex
 			userCtx.state = AskingMargin
 			return "What is your search radius in Km ?"
 		}
@@ -154,14 +150,13 @@ func generateResponse(userCtx *UserContext, message *tgbotapi.Message) string {
 			userCtx.latitude = message.Location.Latitude
 			userCtx.longitude = message.Location.Longitude
 
-			if userCtx.searchType == Flex {
+			if userCtx.searchType == communautofinder.SearchingFlex {
 				userCtx.state = Searching
 				go launchSearch(*userCtx)
 				return generateMessageResearch(*userCtx)
 
-			} else if userCtx.searchType == Station {
+			} else if userCtx.searchType == communautofinder.SearchingStation {
 				userCtx.state = AskingDateStart
-
 				return fmt.Sprintf("What is the start date and time for the rental in the format %s ?", dateExample)
 			}
 		}
@@ -181,10 +176,29 @@ func generateResponse(userCtx *UserContext, message *tgbotapi.Message) string {
 
 		if err == nil {
 			userCtx.dateEnd = t
+			userCtx.state = AskingVehiculeType
+			return "Select vehicule types :\n0 All types\n1 Family car\n2 Utility Vehicle\n3 MidSize\n4 Minivan"
+		}
+
+	} else if userCtx.state == AskingVehiculeType {
+		inputValid := false
+		userCtx.vehiculeType = communautofinder.AllTypes
+
+		if len(messageText) == 1 {
+			vehiculeType, found := inputVehiculeTypes[([]rune(messageText))[0]]
+
+			if found {
+				userCtx.vehiculeType = vehiculeType
+				inputValid = true
+			}
+		}
+
+		if inputValid {
 			userCtx.state = Searching
 			go launchSearch(*userCtx)
 			return generateMessageResearch(*userCtx)
 		}
+		return "Please select one valid vehicule type"
 
 	} else if strings.ToLower(messageText) == "/restart" {
 
@@ -206,9 +220,9 @@ func generateMessageResearch(userCtx UserContext) string {
 
 	var typeSearch string
 
-	if userCtx.searchType == Flex {
+	if userCtx.searchType == communautofinder.SearchingFlex {
 		typeSearch = "flex"
-	} else if userCtx.searchType == Station {
+	} else if userCtx.searchType == communautofinder.SearchingStation {
 		typeSearch = "station"
 	}
 
@@ -216,7 +230,7 @@ func generateMessageResearch(userCtx UserContext) string {
 
 	message := fmt.Sprintf("🔍 Searching for a %s vehicle within %dkm of the position you entered... you will receive a message when one is found", typeSearch, roundedKmMargin)
 
-	if userCtx.searchType == Station {
+	if userCtx.searchType == communautofinder.SearchingStation {
 		message += fmt.Sprintf(" from %s to %s", userCtx.dateStart.Format(layoutDate), userCtx.dateEnd.Format(layoutDate))
 	}
 
@@ -231,10 +245,10 @@ func launchSearch(userCtx UserContext) {
 
 	cancelSearchingMethod[userCtx.chatId] = cancel
 
-	if userCtx.searchType == Flex {
-		go communautofinder.SearchFlexCarForGoRoutine(cityId, currentCoordinate, userCtx.kmMargin, resultChannel[userCtx.chatId], ctx, cancel)
-	} else if userCtx.searchType == Station {
-		go communautofinder.SearchStationCarForGoRoutine(cityId, currentCoordinate, userCtx.kmMargin, userCtx.dateStart, userCtx.dateEnd, resultChannel[userCtx.chatId], ctx, cancel)
+	if userCtx.searchType == communautofinder.SearchingFlex {
+		go communautofinder.SearchFlexCarForGoRoutine(communautofinder.Montreal, currentCoordinate, userCtx.kmMargin, resultChannel[userCtx.chatId], ctx, cancel)
+	} else if userCtx.searchType == communautofinder.SearchingStation {
+		go communautofinder.SearchStationCarForGoRoutine(communautofinder.Montreal, currentCoordinate, userCtx.kmMargin, userCtx.dateStart, userCtx.dateEnd, userCtx.vehiculeType, resultChannel[userCtx.chatId], ctx, cancel)
 	}
 
 	nbCarFound := <-resultChannel[userCtx.chatId]
